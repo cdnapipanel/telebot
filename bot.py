@@ -1,65 +1,36 @@
 import asyncio
 from pyrogram import Client, filters
 from datetime import datetime
-import random
 
-# تنظیمات اولیه
-# توکن ربات خود را از BotFather دریافت کنید
-API_ID = "1769845"  # اگر از اکانت کاربری استفاده می‌کنید، آی‌دی خود را وارد کنید
-API_HASH = "0daad38509d4718ebecff0dc650f9f3e"  # هش خود را وارد کنید
-BOT_TOKEN = "9126199623:AAFXS73_DpVt_-cpRA0_iODwMSvRphYZPts"  # توکن ربات را اینجا بگذارید
-
-# لیست پسوند یا پیشوند برای تنوع دادن به اسم (اختیاری)
-suffixes = ["AI", "🤖", "Bot", "Smart"]
+# تنظیمات
+API_ID = "1769845"
+API_HASH = "0daad38509d4718ebecff0dc650f9f3e"
+BOT_TOKEN = "9226904032:AAHcCU-I6CY0YTT2xk9WQol0vf3md3VzpTM"
 
 app = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 async def update_profile_name():
-    """
-    تابعی که هر 5 ثانیه نام پروفایل را با ساعت فعلی آپدیت می‌کند
-    """
     while True:
         try:
-            # دریافت زمان فعلی
             now = datetime.now()
-            # فرمت ساعت: HH:MM:SS
             time_str = now.strftime("%H:%M:%S")
-            
-            # ساخت نام جدید: مثلاً "Name | 14:30:00 AI"
-            # می‌توانید نام اصلی خود را جایگزین "MyProfile" کنید یا داینامیک بسازید
             new_name = f"MyProfile | {time_str} 🤖"
-            
-            # اعمال تغییرات روی پروفایل
             await app.set_username(new_name)
-            
             print(f"[{time_str}] Profile name updated to: {new_name}")
-            
         except Exception as e:
             print(f"Error updating profile: {e}")
-        
-        # صبر کردن 5 ثانیه قبل از تغییر بعدی
         await asyncio.sleep(5)
 
 @app.on_message(filters.command("start"))
 async def start_command(client, message):
-    await message.reply_text("سلام! من یک هوش مصنوعی هستم که هر 5 ثانیه اسمم رو عوض می‌کنه.")
-
-@app.on_message(filters.command("stop"))
-async def stop_command(client, message):
-    await message.reply_text("خاموش شدن...")
-    # در یک سناریوی واقعی، اینجا می‌توانید حلقه تغییر نام را متوقف کنید
+    await message.reply_text("سلام! من یک هوش مصنوعی هستم.")
 
 async def main():
     await app.start()
     print("ربات شروع به کار کرد!")
     
-    # اجرای همزمان: گوش دادن به پیام‌ها + تغییر مداوم نام پروفایل
-    # ما دو تا وظیفه موازی داریم
-    
-    # 1. گوش دادن به دستورات (start/stop)
+    # اجرای همزمان
     listen_task = asyncio.create_task(app.run())
-    
-    # 2. تغییر نام پروفایل هر 5 ثانیه
     update_task = asyncio.create_task(update_profile_name())
     
     try:
@@ -68,4 +39,5 @@ async def main():
         await app.stop()
 
 if __name__ == "__main__":
+    # این خط مشکل پایتون ۳.۱۴ را حل می‌کند
     asyncio.run(main())
