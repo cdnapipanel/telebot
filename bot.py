@@ -13,8 +13,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # دریافت توکن‌ها از متغیرهای محیطی گیت‌هاب
-API_TOKEN = os.getenv('BOT_TOKEN', '9179286968:AAFZWey-uCGVrb34h6SegkkSY1wKh9PvpAc')
-FOOTBALL_API_KEY = os.getenv('FOOTBALL_API_KEY', '0a00dabb08c94934a7f7e83a0f3dc645')
+API_TOKEN = os.getenv('BOT_TOKEN', 'YOUR_DEFAULT_BOT_TOKEN')
+FOOTBALL_API_KEY = os.getenv('FOOTBALL_API_KEY', 'YOUR_DEFAULT_FOOTBALL_KEY')
 
 bot = telebot.TeleBot(API_TOKEN)
 
