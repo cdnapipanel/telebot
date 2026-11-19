@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # توکن ربات خود را اینجا قرار دهید
-API_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN_HERE'
+API_TOKEN = '9179286968:AAFZWey-uCGVrb34h6SegkkSY1wKh9PvpAc'
 bot = telebot.TeleBot(API_TOKEN)
 
 # --- موتور داده‌های هوشمند (Data Core) ---
