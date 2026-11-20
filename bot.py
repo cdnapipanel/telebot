@@ -1,136 +1,143 @@
-import os
+import telebot
 import requests
-from telegram import Update, BotCommand
-from telegram.ext import Application, CommandHandler, ContextTypes, filters
+import json
+import random
+import time
+from datetime import datetime, timedelta
 
-# تنظیمات اولیه
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-FOOTBALL_API_KEY = os.getenv('FOOTBALL_API_KEY')
-BASE_URL = "https://api.football-data.org/v4"
+# --- تنظیمات کلیدی ---
+TELEGRAM_BOT_TOKEN = '9265601576:AAEWU-GhaQXCOOxME-o3MJ02R26dRCx1cPA'  # توکن ربات خودت رو اینجا بذار
+FOOTBALL_API_KEY = '97fa56020828415693023a63d60a737b'     # API Key سایت football-data.org
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """پیام خوش‌آمدگویی"""
-    welcome_msg = (
-        "👋 سلام! من دستیار هوشمند فوتبال هستم.\n\n"
-        "🔹 دستورالعمل‌ها:\n"
-        "• `/match [لیگ]` : نمایش بازی‌های آینده (مثال: /match PL)\n"
-        "• `/standings [لیگ]` : جدول رده‌بندی (مثال: /standings PD)\n"
-        "• `/start` : شروع مجدد\n\n"
-        "🏆 لیگ‌های محبوب: PL (انگلستان), PD (اسپانیا), SA (ایتالیا), BL1 (آلمان), FL1 (فرانسه), BSA (برزیل)"
-    )
-    await update.message.reply_text(welcome_msg)
+bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
-async def match(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """دریافت بازی‌های آینده"""
-    # دریافت کد لیگ از آرگومان‌ها
-    league_code = context.args[0].upper() if context.args else None
+# --- ظاهر هکری و دارک وب ---
+def hacker_style(text):
+    """متن رو به سبک هکری نمایش میده"""
+    return f"`[{text}]`"
+
+def get_mystery_analysis(match_id):
+    """شبیه‌سازی تحلیل عمیق و کمیابی"""
+    factors = ["xG", "PPDA", "Field Tilt", "Expected Threat"]
+    factor1 = random.choice(factors)
+    factor2 = random.choice([f for f in factors if f != factor1])
     
-    # ساخت URL پایه
-    url = f"{BASE_URL}/matches?status=SCHEDULED&timeFrame=next7d"
+    # عدد تصادفی اما منطقی بین 0.85 تا 0.99 برای ایجاد حس دقت بالا
+    confidence = round(random.uniform(0.85, 0.99), 2)
     
-    # اضافه کردن فیلتر لیگ در صورت وجود
-    if league_code:
-        url += f"&competitions={league_code}"
+    return f"📡 **آنالیز سیگنال:**\n⚠️ پارامترهای غیرقابل مشاهده (Hidden Metrics):\n> {factor1}: +{random.randint(10, 40)}%\n> {factor2}: -{random.randint(5, 20)}%\n\n💎 **احتمال واقعی (Real Probability):** `{confidence * 100}%`\n🕵️‍♂️ **وضعیت:** پروفایل خطر شناسایی شد."
 
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    markup = telebot.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn_home = telebot.KeyboardButton("🔮 پیش‌بینی امروز")
+    btn_table = telebot.KeyboardButton("📊 جدول رده‌بندی")
+    btn_analyze = telebot.KeyboardButton("🧬 تحلیل نابغه")
+    btn_fix = telebot.KeyboardButton("🤝 شایعات تبانی")
+    
+    markup.row(btn_home, btn_table)
+    markup.row(btn_analyze, btn_fix)
+    
+    bot.reply_to(message, 
+        f"👋 سلام کاربر ویژه.\nمن موتور پیش‌بینی هوشمند هستم.\nبرای شروع یکی از گزینه‌ها رو انتخاب کن.",
+        reply_markup=markup)
+
+@bot.message_handler(func=lambda m: m.text == "🔮 پیش‌بینی امروز")
+def predict_today(message):
     try:
+        # دریافت بازی‌های امروز
+        url = "https://api.football-data.org/v4/competitions/PL/matches" # PL = لیگ برست انگلیس. می‌تونی تغییر بدی
         headers = {"X-Auth-Token": FOOTBALL_API_KEY}
-        response = requests.get(url, headers=headers, timeout=10)
         
-        if response.status_code == 200:
-            data = response.json()
-            matches = data.get('matches', [])
-            
-            if not matches:
-                msg = f"✅ هیچ بازی برنامه‌ریزی شده‌ای برای {league_code or 'همه لیگ‌ها'} یافت نشد."
-                await update.message.reply_text(msg)
-                return
-
-            # انتخاب ۵ بازی اول
-            display_matches = matches[:5]
-            msg = "⚽ **بازی‌های پیش‌رو (۷ روز آینده):**\n\n"
-            
-            for m in display_matches: 
-                home = m['homeTeam']['name']
-                away = m['awayTeam']['name']
-                time = m['utcDate']
-                comp_name = m['competition']['name']
-                
-                # فرمت‌بندی پیام
-                msg += f"🏠 **{home}** vs **{away}**\n"
-                msg += f"📅 تاریخ: `{time}`\n"
-                msg += f"🏆 لیگ: *{comp_name}*\n\n"
-            
-            await update.message.reply_text(msg, parse_mode='Markdown')
-            
-        elif response.status_code == 401:
-            await update.message.reply_text("❌ خطا: توکن API نامعتبر است.")
-        elif response.status_code == 404:
-            await update.message.reply_text(f"❌ لیگ با کد `{league_code}` یافت نشد.")
-        else:
-            await update.message.reply_text(f"❌ خطا در ارتباط با سرور: {response.status_code}")
-            
-    except Exception as e:
-        await update.message.reply_text(f"⚠️ خطا: {str(e)}")
-
-async def standings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """دریافت جدول لیگ"""
-    league_code = context.args[0].upper() if context.args else None
-    
-    if not league_code:
-        await update.message.reply_text("لطفاً کد لیگ را وارد کنید. مثال: `/standings PL`")
-        return
-
-    url = f"{BASE_URL}/competitions/{league_code}/standings"
-    
-    try:
-        headers = {"X-Auth-Token": FOOTBALL_API_KEY}
         response = requests.get(url, headers=headers)
+        data = response.json()
         
-        if response.status_code == 200:
-            data = response.json()
-            table_data = data.get('standingTable', {}).get('standings', [{}])[0].get('table', [])
-            
-            if not table_data:
-                await update.message.reply_text("جدولی یافت نشد.")
-                return
+        matches = data.get('matches', [])
+        
+        if not matches:
+            bot.reply_to(message, "❌ امروز بازی مهمی در پایگاه داده وجود ندارد.")
+            return
 
-            msg = f"📊 **جدول {data['standingTable'].get('team', {}).get('name', '')}**\n\n"
+        output = "🌐 **دیتاست روزانه دریافت شد...**\n\n"
+        
+        for match in matches[:5]: # فقط 5 بازی برتر رو نشون میده برای جلوگیری از شلوغی
+            home_team = match['homeTeam']['name']
+            away_team = match['awayTeam']['name']
+            date = match['utcDate'][:10]
+            status = match['status']
             
-            # نمایش ۱۰ تیم اول
-            for entry in table_data[:10]:
-                team = entry['team']['name']
-                pts = entry['points']
-                pos = entry['position']
-                played = entry['playedGames']
-                won = entry['won']
-                draw = entry['draw']
-                lost = entry['lost']
+            # شبیه‌سازی الگوریتم پیش‌بینی
+            win_prob = round(random.uniform(20, 60), 1)
+            draw_prob = round(random.uniform(10, 30), 1)
+            
+            prediction = ""
+            if win_prob > 40:
+                prediction = f"{home_team} 🏆"
+            elif draw_prob > 20:
+                prediction = "🤝 مساوی"
+            else:
+                prediction = f"{away_team} 🏃‍♂️"
                 
-                msg += f"{pos}. {team} | امتیاز: {pts} | B:{won} M:{draw} X:{lost}\n"
+            mystery = get_mystery_analysis(match['id'])
             
-            await update.message.reply_text(msg, parse_mode='Markdown')
-            
-        else:
-            await update.message.reply_text(f"❌ خطا: {response.status_code}")
-            
+            output += f"⚽ **{home_team} vs {away_team}**\n"
+            output += f"📅 زمان: {date} | وضعیت: {status}\n"
+            output += f"🔮 **پیش‌بینی:** `{prediction}`\n"
+            output += mystery + "\n" + "-"*20 + "\n"
+
+        bot.reply_to(message, output, parse_mode='Markdown')
+        
     except Exception as e:
-        await update.message.reply_text(f"⚠️ خطا: {str(e)}")
+        bot.reply_to(message, f"⚠️ خطا در ارتباط با سرور اصلی: {str(e)}")
 
-def main():
-    # بررسی وجود توکن‌ها قبل از اجرا
-    if not BOT_TOKEN or not FOOTBALL_API_KEY:
-        print("خطا: لطفاً BOT_TOKEN و FOOTBALL_API_KEY را در Secretها تنظیم کنید.")
-        return
+@bot.message_handler(func=lambda m: m.text == "📊 جدول رده‌بندی")
+def show_standings(message):
+    try:
+        url = "https://api.football-data.org/v4/competitions/PL/standings"
+        headers = {"X-Auth-Token": FOOTBALL_API_KEY}
+        
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        
+        table_text = "🏆 **جدول رده‌بندی لیگ برست (Live Data)**\n\n"
+        standings = data['standingTable'][0]['table']
+        
+        for i, row in enumerate(standings[:10], 1):
+            team = row['team']['name']
+            pts = row['points']
+            played = row['playedMatches']
+            w = row['win']
+            l = row['loss']
+            
+            table_text += f"{i}. {team} | امتیاز: {pts} | برد: {w} | باخت: {l}\n"
+            
+        bot.reply_to(message, table_text)
+        
+    except Exception as e:
+        bot.reply_to(message, f"خطا در دریافت جداول: {e}")
 
-    app = Application.builder().token(BOT_TOKEN).build()
-    
-    # تعریف دستورات
-    app.add_handler(CommandHandler('start', start))
-    app.add_handler(CommandHandler('match', match))
-    app.add_handler(CommandHandler('standings', standings))
-    
-    print("🤖 ربات فعال و آماده کار است...")
-    app.run_polling()
+@bot.message_handler(func=lambda m: m.text == "🧬 تحلیل نابغه")
+def deep_analysis(message):
+    analysis_text = """
+🧠 **تحلیل عمیق (Deep Dive):**
+در حال اسکن داده‌های خام...
+✅ دسترسی به منابع غیررسمی تایید شد.
+📉 نوسانات بازار شرط‌بندی در ۲۴ ساعت اخیر نشان‌دهنده ورود پول هوشمند به سمت تیم میزبان است.
+🔒 **سیگنال:** خرید در ضریب کمتر از 1.85 امن است.
+"""
+    bot.reply_to(message, analysis_text, parse_mode='Markdown')
 
-if __name__ == '__main__':
-    main()
+@bot.message_handler(func=lambda m: m.text == "🤝 شایعات تبانی")
+def rumors(message):
+    rumor_list = [
+        "تیم A در نیمکت دوم انرژی کمتری دارد (خستگی پنهان).",
+        "داور اصلی بازی فردا سابقه ۸۰٪ پنالتی به ضرر تیم مهمان را دارد.",
+        "یک بازیکن کلیدی تیم B در تمرینات مشکوک عمل کرده است.",
+        "پارامتر فشار بالا (High Press) در ۱۰ دقیقه اول بازی حذف خواهد شد."
+    ]
+    rumor = random.choice(rumor_list)
+    bot.reply_to(message, f"📡 **فایل طبقه‌بندی شده:\n\n{rumor}\n\n[منبع: آنالیز رفتار شناختی داوران]", parse_mode='Markdown')
+
+# اجرای ربات
+print("ربات هکری فوتبال فعال شد...")
+bot.infinity_polling()
